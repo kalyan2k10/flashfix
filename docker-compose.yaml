@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  user-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: userdb
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evaluation-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: evaluationdb
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evaluation-service:
+    build: 
+      context: ./evaluation-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_URL=root:admin@tcp(evaluation-db:3306)/evaluationdb
+    depends_on:
+      evaluation-db:
+        condition: service_healthy
+
+  user-service:
+    build: 
+      context: ./user-service
+    ports:
+      - "8080:8080"
+    environment:
+      - EVALUATION_SERVICE_URL=http://evaluation-service:8081
+      - DB_URL=root:admin@tcp(user-db:3306)/userdb
+    depends_on:
+      user-db:
+        condition: service_healthy
+      evaluation-service:
+        condition: service_started

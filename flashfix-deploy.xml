@@ -1,3 +1,43 @@
+# ==========================================
+# 1. EVALUATION SERVICE DATABASE (MySQL)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaluation-db
+spec:
+  selector:
+    matchLabels:
+      app: evaluation-db
+  template:
+    metadata:
+      labels:
+        app: evaluation-db
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "admin"
+        - name: MYSQL_DATABASE
+          value: "evaluationdb"
+        ports:
+        - containerPort: 3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaluation-db
+spec:
+  selector:
+    app: evaluation-db
+  ports:
+    - port: 3306
+---
+# ==========================================
+# 2. EVALUATION SERVICE (Go)
+# ==========================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +55,9 @@ spec:
       containers:
       - name: evaluation-service
         image: us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/evaluation-service:v1
+        env:
+        - name: DB_URL
+          value: "root:admin@tcp(evaluation-db:3306)/evaluationdb"
         ports:
         - containerPort: 8081
 ---
@@ -30,6 +73,46 @@ spec:
       port: 8081
       targetPort: 8081
 ---
+# ==========================================
+# 3. USER SERVICE DATABASE (MySQL)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-db
+spec:
+  selector:
+    matchLabels:
+      app: user-db
+  template:
+    metadata:
+      labels:
+        app: user-db
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "admin"
+        - name: MYSQL_DATABASE
+          value: "userdb"
+        ports:
+        - containerPort: 3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-db
+spec:
+  selector:
+    app: user-db
+  ports:
+    - port: 3306
+---
+# ==========================================
+# 4. USER SERVICE (Go)
+# ==========================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,6 +133,8 @@ spec:
         env:
         - name: EVALUATION_SERVICE_URL
           value: "http://evaluation-service:8081"
+        - name: DB_URL
+          value: "root:admin@tcp(user-db:3306)/userdb"
         ports:
         - containerPort: 8080
 ---

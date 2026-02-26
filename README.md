@@ -44,3 +44,5 @@ gcloud artifacts docker tags list us-central1-docker.pkg.dev/gifted-airway-47770
 
 # "The Nuclear Option" - Clean up old deployments to avoid label conflicts
 kubectl delete deployment user-service evaluation-service
+
+docker-compose up --build

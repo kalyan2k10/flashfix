@@ -1,52 +1,65 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
-// UserRequest matches the JSON structure sent by the User Service
 type UserRequest struct {
 	Username string `json:"username"`
 }
 
+var db *sql.DB
+
+func initDB() {
+	dsn := os.Getenv("DB_URL")
+	if dsn == "" {
+		dsn = "root:admin@tcp(evaluation-db:3306)/evaluationdb"
+	}
+
+	var err error
+	db, err = sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS evaluations (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		username VARCHAR(255) NOT NULL,
+		evaluated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
-	// 1. Define the handler
+	initDB()
+	defer db.Close()
+
 	http.HandleFunc("/evaluate", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
 		var req UserRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
+		json.NewDecoder(r.Body).Decode(&req)
+
+		// Persist to Evaluation DB
+		_, err := db.Exec("INSERT INTO evaluations (username) VALUES (?)", req.Username)
+		if err != nil {
+			log.Printf("DB Insert Error: %v", err)
 		}
 
-		// Logic for FlashFix roadside evaluation
-		log.Printf("Processing evaluation for user: %s", req.Username)
-		
-		responseMessage := fmt.Sprintf("evaluated for this %s", req.Username)
-		
-		// Send back the plain text response
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(responseMessage))
+		w.Write([]byte(fmt.Sprintf("evaluated for this %s", req.Username)))
 	})
 
-	// 2. Determine port from environment or default to 8081
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
 	}
-
-	// 3. Start the server
-	fmt.Printf("Evaluation Service (FlashFix) starting on port %s...\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf("Server failed: %s", err)
-	}
+	log.Printf("Evaluation Service running on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
