@@ -131,7 +131,7 @@ spec:
     spec:
       containers:
       - name: user-service
-        image: us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v5
+        image: us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v1
         env:
         - name: KAFKA_BROKER
           value: "kafka:9092"

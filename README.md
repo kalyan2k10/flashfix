@@ -26,21 +26,14 @@ docker-compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 ```
 
 ```
+build and push
+docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v1 ./user-service
+docker push us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v1
 
-## ☁️ GKE Production (Kubernetes)
+# Build and Push Evaluation Service
+docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/evaluation-service:v1 ./evaluation-service
+docker push us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/evaluation-service:v1
 
-### Build & Release
-```bash
-# Build & Push User Service
-docker buildx build --platform linux/amd64 \
-  -t us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v5 ./user-service --push
-
-# Build & Push Evaluation Service
-docker buildx build --platform linux/amd64 \
-  -t us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/evaluation-service:v1 ./evaluation-service --push
-
-# Check Artifact Registry tags
-gcloud artifacts docker tags list us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service --sort-by=~timestamp
 ```
 
 ### Deployment & Operations
@@ -85,11 +78,11 @@ kubectl delete deployment user-service evaluation-service
 
 kube commands : 
  kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --delete --topic user-registrations\n
-kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --topic user-registrations --partitions 3 --replication-factor 1\n
-kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic user-registrations --from-beginning\n
+kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --topic user-registrations --partitions 3 --replication-factor 1
+kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic user-registrations --from-beginning
  kubectl exec $(kubectl get pod -l app=user-db -o jsonpath="{.items[0].metadata.name}") -- mysql -u root -padmin -D userdb -e "select * from users;"
 
- exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+ kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
 
 
   kubectl exec $(kubectl get pod -l app=kafka -o jsonpath="{.items[0].metadata.name}") -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --delete --topic evaluation-results

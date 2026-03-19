@@ -96,7 +96,7 @@ func initDB() {
 	var err error
 
 	// Retry logic because MySQL takes a few seconds to boot
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		db, err = sql.Open("mysql", dbUrl)
 		if err == nil {
 			err = db.Ping()
@@ -104,7 +104,7 @@ func initDB() {
 		if err == nil {
 			break
 		}
-		log.Printf("Waiting for database... attempt %d", i+1)
+		log.Printf("Waiting for database... attempt %d/30", i+1)
 		time.Sleep(3 * time.Second)
 	}
 
@@ -138,21 +138,29 @@ func listenForResults() {
 	})
 	defer reader.Close()
 
+	log.Println("User Service: Result Consumer started and waiting for messages...")
+
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			log.Printf("Reader error: %v", err)
+			time.Sleep(time.Second) // Wait a bit before retrying
+			continue
+		}
+		log.Printf("User Service received Kafka message: %s", string(m.Value))
+
+		var res EvaluationResult
+		if err := json.Unmarshal(m.Value, &res); err != nil {
+			log.Printf("JSON Unmarshal error: %v", err)
 			continue
 		}
 
-		var res EvaluationResult
-		json.Unmarshal(m.Value, &res)
-
-		_, err = db.Exec("UPDATE users SET status = ? WHERE username = ?", res.Status, res.Username)
+		result, err := db.Exec("UPDATE users SET status = ? WHERE username = ?", res.Status, res.Username)
 		if err != nil {
 			log.Printf("Update error: %v", err)
 		} else {
-			log.Printf("Finalized user %s as %s", res.Username, res.Status)
+			rows, _ := result.RowsAffected()
+			log.Printf("Finalized user %s as %s (Rows updated: %d)", res.Username, res.Status, rows)
 		}
 	}
 }

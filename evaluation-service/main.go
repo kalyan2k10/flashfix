@@ -52,6 +52,7 @@ func main() {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			log.Printf("Error reading message: %v", err)
+			time.Sleep(time.Second) // Wait a bit before retrying
 			continue
 		}
 		log.Printf("Received message from Kafka: %s", string(m.Value))
@@ -104,7 +105,7 @@ func initDB() {
 	var err error
 
 	// Retry loop for MySQL availability
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		db, err = sql.Open("mysql", dbUrl)
 		if err == nil {
 			err = db.Ping()
@@ -112,7 +113,7 @@ func initDB() {
 		if err == nil {
 			break
 		}
-		log.Printf("Evaluation DB not ready... retrying in 3s (Attempt %d)", i+1)
+		log.Printf("Evaluation DB not ready... retrying in 3s (Attempt %d/30)", i+1)
 		time.Sleep(3 * time.Second)
 	}
 
