@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # MySQL for User Service
   user-db:
     image: mysql:8.0
     environment:
@@ -9,11 +8,12 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # MySQL for Evaluation Service
   evaluation-db:
     image: mysql:8.0
     environment:
@@ -22,20 +22,46 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # Kafka Broker (Updated Image Tag)
+  kafka:
+    image: apache/kafka:3.7.0
+    ports:
+      - "9092:9092"
+    environment:
+      # These variables are slightly different for the official Apache image
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_NUM_PARTITIONS=3
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
   evaluation-service:
     build: 
       context: ./evaluation-service
-    ports:
-      - "8081:8081"
     environment:
       - DB_URL=root:admin@tcp(evaluation-db:3306)/evaluationdb
+      - KAFKA_BROKER=kafka:9092
     depends_on:
       evaluation-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
   user-service:
@@ -44,10 +70,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - EVALUATION_SERVICE_URL=http://evaluation-service:8081
       - DB_URL=root:admin@tcp(user-db:3306)/userdb
+      - KAFKA_BROKER=kafka:9092
     depends_on:
       user-db:
         condition: service_healthy
-      evaluation-service:
-        condition: service_started
+      kafka:
+        condition: service_healthy
