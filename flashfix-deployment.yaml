@@ -55,6 +55,7 @@ spec:
       containers:
       - name: evaluation-service
         image: us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/evaluation-service:v1
+        imagePullPolicy: Always
         env:
         - name: DB_URL
           value: "root:admin@tcp(evaluation-db:3306)/evaluationdb"
@@ -74,7 +75,6 @@ spec:
     - protocol: TCP
       port: 8081
       targetPort: 8081
----
 # ==========================================
 # 3. USER SERVICE DATABASE (MySQL)
 # ==========================================
@@ -132,6 +132,7 @@ spec:
       containers:
       - name: user-service
         image: us-central1-docker.pkg.dev/gifted-airway-477703-v1/flashfix/user-service:v1
+        imagePullPolicy: Always
         env:
         - name: KAFKA_BROKER
           value: "kafka:9092"

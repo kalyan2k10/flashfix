@@ -45,7 +45,6 @@ func main() {
 			http.Error(w, "Only POST allowed", 405)
 			return
 		}
-
 		var req UserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), 400)
